@@ -7,15 +7,15 @@ const cors = require('cors');
 const authMiddleware = require('./middleware/authMiddleware');
 require('dotenv').config();
 
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Routes
 app.get('/profile', authMiddleware, async (req, res) => {
   res.json({ message: `Welcome, ${req.user.email}` });
 });
-
 
 app.post('/users', async (req, res) => {
   const { name, email, password } = req.body;
@@ -86,19 +86,6 @@ app.delete('/users/:id', async (req, res) => {
   }
 });
 
-// Aapka MongoDB connect code simple hona chahiye:
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('MongoDB Connected');
-    app.listen(process.env.PORT, () => {
-      console.log(`Server running on http://localhost:${process.env.PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-  });
-
-
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -110,18 +97,30 @@ app.post('/login', async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
     const token = jwt.sign(
-  { id: user._id, email: user.email },
-  process.env.JWT_SECRET,
-  { expiresIn: '1h' }
-);
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
 
-
-    res.json({ message: 'Login successful', token ,
-        name: user.name 
-
+    res.json({
+      message: 'Login successful',
+      token,
+      name: user.name
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server Error' });
   }
 });
+
+// MongoDB connection
+let isConnected = false;
+async function connectDB() {
+  if (isConnected) return;
+  await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
+  console.log("MongoDB Connected");
+}
+connectDB();
+
+module.exports = app; // Export for Vercel
